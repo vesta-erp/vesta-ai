@@ -1,0 +1,14 @@
+spring:
+  flyway:
+    enabled: false
+  ai:
+    anthropic:
+      api-key: test-key
+
+jwt:
+  secret: test-secret-key-for-unit-tests-min-256-bits-long
+  expiration-ms: 3600000
+
+vesta:
+  dotnet-service:
+    url: http://localhost:9999
