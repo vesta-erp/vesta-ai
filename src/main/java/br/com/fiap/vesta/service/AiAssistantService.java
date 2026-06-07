@@ -55,15 +55,22 @@ public class AiAssistantService {
             ocorrenciasAbertas
         );
 
-        String resumo = chatClient.prompt()
-            .system("""
-                Você é um assistente operacional de abrigos emergenciais. \
-                Gere resumos concisos em português para gestores de defesa civil, \
-                destacando situações críticas e recomendando ações prioritárias.""")
-            .user("Com base nos dados abaixo, gere um resumo operacional e liste ações prioritárias:\n\n"
-                + contextoDados)
-            .call()
-            .content();
+        String resumo;
+        try {
+            resumo = chatClient.prompt()
+                .system("""
+                    Você é um assistente operacional de abrigos emergenciais. \
+                    Gere resumos concisos em português para gestores de defesa civil, \
+                    destacando situações críticas e recomendando ações prioritárias.""")
+                .user("Com base nos dados abaixo, gere um resumo operacional e liste ações prioritárias:\n\n"
+                    + contextoDados)
+                .call()
+                .content();
+        } catch (Exception e) {
+            resumo = "Assistente de IA indisponível no momento. " +
+                "Configure as variáveis AZURE_OPENAI_API_KEY e AZURE_OPENAI_ENDPOINT para habilitar este recurso.\n\n" +
+                "Dados operacionais coletados:\n" + contextoDados;
+        }
 
         return new ResumoOperacionalResponse(idAbrigo, abrigo.getNmAbrigo(), resumo);
     }
