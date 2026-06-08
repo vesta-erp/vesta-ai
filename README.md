@@ -1,210 +1,310 @@
-# Vesta API — Java / Spring Boot
+# Vesta — Plataforma de Gestão Operacional de Abrigos
 
-API REST principal da plataforma **Vesta**, sistema de gerenciamento de abrigos de emergência para órgãos públicos (prefeituras, defesa civil, governos estaduais). Projeto acadêmico FIAP Global Solution 2026 — 2TDSA.
+> Solução funcional de **IA Generativa** aplicada à gestão de abrigos em situações de desastre, integrando Spring AI, Azure OpenAI e Oracle DB em um pipeline de deploy automatizado via GitHub Actions.
 
 ---
 
-## Tecnologias
+## Sumário
 
-| Camada | Stack |
+- [Problema e solução](#problema-e-solução)
+- [Trilha escolhida](#trilha-escolhida)
+- [Arquitetura da solução](#arquitetura-da-solução)
+- [Stack tecnológica](#stack-tecnológica)
+- [Estrutura do repositório](#estrutura-do-repositório)
+- [Como executar localmente](#como-executar-localmente)
+- [Como executar via Docker](#como-executar-via-docker)
+- [Deploy na Azure](#deploy-na-azure)
+- [Endpoints da API](#endpoints-da-api)
+- [Módulo de IA Generativa](#módulo-de-ia-generativa)
+- [Variáveis de ambiente](#variáveis-de-ambiente)
+- [Integrantes](#integrantes)
+- [Vídeo de execução](#vídeo-de-execução)
+
+---
+
+## Problema e solução
+
+Em situações de desastre, gestores de defesa civil precisam tomar decisões rápidas sobre dezenas de abrigos simultaneamente — identificar superlotações, redistribuir recursos, priorizar atendimentos. O volume de dados operacionais torna impossível analisar tudo manualmente em tempo real.
+
+A plataforma **Vesta** centraliza a gestão operacional desses abrigos. O módulo de **IA Generativa** adiciona um assistente inteligente que interpreta os dados em tempo real e responde perguntas do gestor em linguagem natural, fundamentando cada resposta nos dados reais do banco Oracle.
+
+---
+
+## Trilha escolhida
+
+**IA Generativa** — desenvolvimento de solução utilizando modelos generativos e linguagem natural, com assistente inteligente integrado à API Java via Spring AI, conectado ao Azure OpenAI (GPT-4.1-mini), com interface interativa via Swagger e processamento contextual dos dados operacionais dos abrigos.
+
+---
+
+## Arquitetura da solução
+![Arquitetura](docs/arquitetura.jpg)
+
+### Fluxo do assistente de IA
+
+1. Gestor envia pergunta via `POST /api/assistente`
+2. `AiAssistantService` busca dados reais do Oracle (abrigos, estoque, ocorrências)
+3. Monta o snapshot operacional como contexto estruturado
+4. Envia contexto + pergunta ao GPT-4.1-mini via Spring AI
+5. Modelo responde em português com base exclusivamente nos dados fornecidos
+6. Resposta retornada ao gestor com o contexto utilizado
+
+---
+
+## Stack tecnológica
+
+| Camada | Tecnologia |
 |---|---|
-| Linguagem | Java 17 |
+| Linguagem | Java 21 |
 | Framework | Spring Boot 3.3.4 |
-| Segurança | Spring Security 6 + JWT (jjwt 0.12.6) |
-| Persistência | Spring Data JPA / Hibernate 6 + Oracle (ojdbc11 23.4) |
-| Migrations | Flyway |
-| Cache | Spring Cache + Caffeine |
+| IA Generativa | Spring AI 1.0.0 + Azure OpenAI |
+| Modelo | GPT-4.1-mini (Azure AI Foundry) |
+| Banco de dados | Oracle 19c (Flyway migrations) |
+| Segurança | Spring Security + JWT (jjwt 0.12.6) |
 | Documentação | Springdoc OpenAPI 2.6.0 (Swagger UI) |
-| Integração | Spring Cloud OpenFeign (serviço .NET) |
-| IA | Spring AI — Azure OpenAI (gpt-4o) |
-| Testes | JUnit 5, Mockito, MockMvc, H2 (modo Oracle) |
+| Cloud | Azure App Service (Canada Central) |
+| CI/CD | GitHub Actions |
 
 ---
 
-## Pré-requisitos
+## Estrutura do repositório
 
-- Java 17+
+```
+vesta-ai/
+├── .github/
+│   └── workflows/
+│       └── main_vesta-api.yml      ← pipeline CI/CD automático
+├── src/
+│   └── main/
+│       ├── java/br/com/fiap/vesta/
+│       │   ├── client/             ← FeignClient (.NET criticidade)
+│       │   ├── config/             ← SecurityConfig, SpringAiConfig
+│       │   ├── controller/         ← REST endpoints + AssistenteController
+│       │   ├── domain/             ← Entities, Enums
+│       │   ├── dto/                ← Request/Response DTOs
+│       │   ├── exception/          ← GlobalExceptionHandler
+│       │   ├── repository/         ← Spring Data JPA
+│       │   ├── security/           ← JWT filter e provider
+│       │   ├── service/            ← AiAssistantService + demais serviços
+│       │   └── VestaApplication.java
+│       └── resources/
+│           ├── db/migration/       ← Scripts Flyway (V1 a V7)
+│           ├── application.yml
+│           └── application-test.yml
+└── pom.xml
+```
+
+---
+
+## Como executar localmente
+
+### Pré-requisitos
+
+- Java 21+
 - Maven 3.9+
-- Oracle Database (XEPDB1 ou cloud)
-- Variáveis de ambiente configuradas (ver seção abaixo)
+- Oracle DB acessível
+- Conta Azure com recurso OpenAI provisionado
 
----
-
-## Variáveis de Ambiente
-
-| Variável | Descrição | Padrão (dev) |
-|---|---|---|
-| `DB_VESTA_URL` | JDBC URL do Oracle | `jdbc:oracle:thin:@localhost:1521/XEPDB1` |
-| `DB_VESTA_USER` | Usuário do banco | `vesta` |
-| `DB_VESTA_PASSWORD` | Senha do banco | `vesta` |
-| `Jwt__SecretKey` | Chave secreta JWT (mín. 256 bits) | valor padrão inseguro |
-| `AZURE_OPENAI_API_KEY` | Chave da API Azure OpenAI (resumo IA) | _(vazio — IA desativada)_ |
-| `AZURE_OPENAI_ENDPOINT` | Endpoint do Azure OpenAI | _(vazio — IA desativada)_ |
-| `AZURE_OPENAI_DEPLOYMENT` | Nome do deployment no Azure OpenAI | `gpt-4o` |
-| `DOTNET_URL` | URL do serviço .NET de criticidade | `http://localhost:5000` |
-
----
-
-## Como executar
+### 1. Clonar o repositório
 
 ```bash
-# entrar no diretório
-cd java/vesta-api
-
-# compilar e rodar testes
-mvn verify
-
-# subir a aplicação
-mvn spring-boot:run \
-  -DDB_VESTA_URL=jdbc:oracle:thin:@... \
-  -DDB_VESTA_USER=vesta \
-  -DDB_VESTA_PASSWORD=vesta \
-  -DJwt__SecretKey=sua-chave-secreta-256bits
+git clone https://github.com/vesta-erp/vesta-ai.git
+cd vesta-ai
 ```
 
-A API sobe em `http://localhost:8080`.  
-Swagger UI disponível em `http://localhost:8080/swagger-ui.html`.
+### 2. Configurar variáveis de ambiente
+
+```bash
+export AZURE_OPENAI_API_KEY=sua_chave_aqui
+export AZURE_OPENAI_ENDPOINT=https://seu-recurso.openai.azure.com
+export AZURE_OPENAI_DEPLOYMENT=gpt-4.1-mini
+export DB_VESTA_URL=jdbc:oracle:thin:@//oracle.fiap.com.br:1521/orcl
+export DB_VESTA_USER=seu_usuario
+export DB_VESTA_PASSWORD=sua_senha
+```
+
+### 3. Executar
+
+```bash
+mvn spring-boot:run
+```
+
+A API estará disponível em `http://localhost:8080`  
+Swagger UI: `http://localhost:8080/swagger-ui/index.html`
 
 ---
 
-## Endpoints
+## Como executar via Docker
 
-Todos os endpoints (exceto `/api/auth/login`) exigem o header:
+```dockerfile
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+COPY target/*.jar app.jar
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]
+```
+
+```bash
+# Build
+mvn clean package -DskipTests
+docker build -t vesta-api .
+
+# Run
+docker run -p 8080:8080 \
+  -e AZURE_OPENAI_API_KEY=... \
+  -e AZURE_OPENAI_ENDPOINT=... \
+  -e AZURE_OPENAI_DEPLOYMENT=gpt-4.1-mini \
+  -e DB_VESTA_URL=... \
+  -e DB_VESTA_USER=... \
+  -e DB_VESTA_PASSWORD=... \
+  vesta-api
+```
+
+---
+
+## Deploy na Azure
+
+O deploy é feito automaticamente via GitHub Actions a cada push na branch `main`.
+
+### Recursos provisionados
+
+| Recurso | Nome | Região |
+|---|---|---|
+| Resource Group | rg-vesta | Canada Central |
+| App Service Plan | plan-vesta | Canada Central |
+| Web App | vesta-api | Canada Central |
+| Azure OpenAI | vesta-resource | East US 2 |
+| Modelo implantado | gpt-4.1-mini | East US 2 |
+
+### Pipeline CI/CD
 
 ```
-Authorization: Bearer <token>
+push → main
+  └── GitHub Actions
+        ├── Checkout código
+        ├── Setup Java 21 (Microsoft distribution)
+        ├── mvn clean install
+        ├── Upload artifact (.jar)
+        └── Deploy → Azure App Service (via OIDC)
 ```
+
+### URL pública
+
+```
+https://vesta-api-fdc2cgcbhwczd4eq.canadacentral-01.azurewebsites.net
+```
+
+---
+
+## Endpoints da API
 
 ### Autenticação
 
-| Método | Rota | Descrição | Perfis |
-|---|---|---|---|
-| `POST` | `/api/auth/login` | Obter token JWT | Público |
+```bash
+POST /api/auth/login
+Content-Type: application/json
 
-### Abrigos
-
-| Método | Rota | Descrição | Perfis |
-|---|---|---|---|
-| `GET` | `/api/abrigos` | Listar abrigos (filtro opcional `?idRegiao=`) | Todos |
-| `GET` | `/api/abrigos/{id}` | Buscar abrigo por ID | Todos |
-| `POST` | `/api/abrigos` | Criar abrigo | ADMIN, GESTOR |
-| `PUT` | `/api/abrigos/{id}` | Atualizar abrigo | ADMIN, GESTOR |
-| `PATCH` | `/api/abrigos/{id}/status` | Atualizar status (`?status=ATIVO\|LOTADO\|INTERDITADO\|INATIVO`) | ADMIN, GESTOR |
-
-### Famílias e Acolhimento
-
-| Método | Rota | Descrição | Perfis |
-|---|---|---|---|
-| `GET` | `/api/familias` | Listar famílias (filtro `?idAbrigo=`) | Todos |
-| `GET` | `/api/familias/{id}` | Buscar família | Todos |
-| `POST` | `/api/familias/acolhimento` | Registrar acolhimento de família | ADMIN, GESTOR, OPERADOR |
-| `POST` | `/api/familias/{id}/saida` | Registrar saída de família | ADMIN, GESTOR, OPERADOR |
-
-### Estoque
-
-| Método | Rota | Descrição | Perfis |
-|---|---|---|---|
-| `GET` | `/api/estoques/abrigo/{idAbrigo}` | Listar estoque do abrigo | Todos |
-| `POST` | `/api/estoques/movimentacao` | Registrar movimentação de recurso | ADMIN, GESTOR, OPERADOR |
-| `PATCH` | `/api/estoques/{idEstoque}/minimo` | Atualizar quantidade mínima | ADMIN, GESTOR |
-
-### Ocorrências
-
-| Método | Rota | Descrição | Perfis |
-|---|---|---|---|
-| `GET` | `/api/ocorrencias/abrigo/{idAbrigo}` | Listar ocorrências do abrigo | Todos |
-| `POST` | `/api/ocorrencias` | Registrar ocorrência | ADMIN, GESTOR, OPERADOR |
-| `PATCH` | `/api/ocorrencias/{id}/status` | Atualizar status da ocorrência | ADMIN, GESTOR, OPERADOR |
-
-### Solicitações de Recursos
-
-| Método | Rota | Descrição | Perfis |
-|---|---|---|---|
-| `GET` | `/api/solicitacoes` | Listar solicitações (filtro `?idAbrigo=`) | Todos |
-| `POST` | `/api/solicitacoes` | Abrir solicitação | ADMIN, GESTOR, OPERADOR |
-| `PATCH` | `/api/solicitacoes/{id}/status` | Avançar status da solicitação | ADMIN, GESTOR |
-
-### Transferências
-
-| Método | Rota | Descrição | Perfis |
-|---|---|---|---|
-| `GET` | `/api/transferencias` | Listar transferências | Todos |
-| `POST` | `/api/transferencias` | Solicitar transferência de família | ADMIN, GESTOR |
-| `PATCH` | `/api/transferencias/{id}/aprovar` | Aprovar e executar transferência | ADMIN, GESTOR |
-
-### Alertas
-
-| Método | Rota | Descrição | Perfis |
-|---|---|---|---|
-| `GET` | `/api/alertas` | Listar alertas ativos | Todos |
-| `GET` | `/api/alertas/abrigo/{idAbrigo}` | Alertas de um abrigo | Todos |
-| `PATCH` | `/api/alertas/{id}/resolver` | Resolver alerta | ADMIN, GESTOR, OPERADOR |
-
-### Indicadores e IA
-
-| Método | Rota | Descrição | Perfis |
-|---|---|---|---|
-| `GET` | `/api/indicadores/ranking` | Ranking de abrigos por criticidade | ADMIN, GESTOR |
-| `GET` | `/api/indicadores/abrigo/{id}` | Indicadores de criticidade de um abrigo | Todos |
-| `GET` | `/api/indicadores/abrigo/{id}/resumo` | Resumo operacional gerado por IA | Todos |
-
----
-
-## Regras de Negócio
-
-- Abrigo não aceita novos ocupantes quando está no status `LOTADO` ou `INTERDITADO`
-- Status dos abrigos: `ATIVO` → `LOTADO` → `INTERDITADO` → `INATIVO`
-- Estoque com quantidade abaixo do mínimo gera `Alerta` automaticamente
-- Fluxo de solicitação: `ABERTA` → `EM_ANALISE` → `EM_ATENDIMENTO` → `CONCLUIDA`
-- Transferência só é permitida se o abrigo destino possui vagas disponíveis
-- Operadores só podem atualizar o abrigo ao qual estão vinculados
-- Gestores só visualizam e operam dentro de sua região
-
----
-
-## Estrutura do Projeto
-
-```
-src/main/java/br/com/fiap/vesta/
-├── config/          # SecurityConfig, CacheConfig, CorsConfig, OpenApiConfig, FeignConfig
-├── security/        # JwtTokenProvider, JwtAuthenticationFilter, UserDetailsServiceImpl
-├── domain/
-│   ├── entity/      # 14 entidades JPA (Abrigo, Familia, Recurso, etc.)
-│   └── enums/       # 10 enums do domínio
-├── repository/      # 14 interfaces Spring Data JPA
-├── dto/
-│   ├── request/     # DTOs de entrada com validação Bean Validation
-│   └── response/    # DTOs de saída (records)
-├── service/         # Lógica de negócio
-├── controller/      # Controllers REST com HATEOAS
-├── client/          # Feign client para o serviço .NET
-└── exception/       # GlobalExceptionHandler e exceções customizadas
-
-src/main/resources/
-├── application.yml
-├── application-test.yml
-└── db/migration/    # Scripts Flyway (V1__create_tables, V2__seed_data)
+{
+  "email": "admin@vesta.gov.br",
+  "senha": "admin123"
+}
 ```
 
----
+Copie o `token` retornado e use no Swagger em **Authorize → Bearer {token}**.
 
-## Testes
+### Assistente de IA
 
 ```bash
-# rodar todos os testes
-mvn test
+POST /api/assistente
+Authorization: Bearer {token}
+Content-Type: application/json
 
-# rodar apenas testes de um módulo
-mvn test -Dtest=AbrigoServiceTest
+{
+  "pergunta": "Quais abrigos estão com ocupação acima de 90%?"
+}
 ```
 
-Os testes usam H2 em memória (modo Oracle). O perfil `test` é ativado automaticamente via `application-test.yml`.
+Exemplos de perguntas:
+
+- `"Quais são os abrigos mais críticos agora?"`
+- `"Quais recursos estão abaixo do estoque mínimo?"`
+- `"Sugira a ordem de atendimento prioritário para hoje."`
+- `"Por que o Abrigo Norte foi marcado como crítico?"`
+- `"Quais solicitações estão atrasadas?"`
+
+### Demais endpoints
+
+Acesse o Swagger para a documentação completa:
+
+```
+https://https://vesta-api-fdc2cgcbhwczd4eq.canadacentral-01.azurewebsites.net/swagger-ui/index.html#/
+```
 
 ---
 
-## Integração com o Serviço .NET
+## Módulo de IA Generativa
 
-A API consome o serviço `.NET` de criticidade via OpenFeign. O cliente está em `CriticidadeClient` e usa fallback (`CriticidadeClientFallback`) quando o serviço estiver indisponível. Configure a URL via `DOTNET_URL`.
+### Como funciona
+
+O `AiAssistantService` executa o seguinte fluxo a cada requisição:
+
+```java
+// 1. Busca dados reais do Oracle
+List<EstoqueAbrigo> criticos = estoqueRepository
+    .findItensAbaixoMinimoPorAbrigo(idAbrigo);
+long ocorrenciasAbertas = ocorrenciaRepository
+    .countByAbrigoIdAbrigoAndStStatusNot(id, StatusOcorrencia.RESOLVIDA);
+
+// 2. Monta contexto estruturado
+String contexto = String.format("""
+    Abrigo: %s | Ocupação: %d/%d (%.1f%%)
+    Itens críticos: %s
+    Ocorrências abertas: %d
+    """, ...);
+
+// 3. Chama o modelo via Spring AI
+String resposta = chatClient.prompt()
+    .system("Você é um assistente operacional de abrigos...")
+    .user("Com base nos dados abaixo: " + contexto + pergunta)
+    .call()
+    .content();
+```
+
+### Configuração do Spring AI
+
+```yaml
+spring:
+  ai:
+    azure:
+      openai:
+        api-key: ${AZURE_OPENAI_API_KEY}
+        endpoint: ${AZURE_OPENAI_ENDPOINT}
+        chat:
+          options:
+            deployment-name: ${AZURE_OPENAI_DEPLOYMENT:gpt-4.1-mini}
+            temperature: 0.3
+            max-tokens: 1000
+```
+
+---
+
+## Variáveis de ambiente
+
+| Variável | Descrição |
+|---|---|
+| `AZURE_OPENAI_API_KEY` | Chave de autenticação do Azure OpenAI |
+| `AZURE_OPENAI_ENDPOINT` | URL do endpoint do recurso |
+| `AZURE_OPENAI_DEPLOYMENT` | Nome da implantação (ex: `gpt-4.1-mini`) |
+| `DB_VESTA_URL` | JDBC URL do Oracle |
+| `DB_VESTA_USER` | Usuário do banco |
+| `DB_VESTA_PASSWORD` | Senha do banco |
+| `Jwt__SecretKey` | Chave secreta para geração do JWT |
+| `DOTNET_URL` | URL do serviço .NET de criticidade |
+
+---
+
+## Vídeo de execução
+Link do Vídeo: 
+*link*
 
 ---
 
@@ -212,6 +312,12 @@ A API consome o serviço `.NET` de criticidade via OpenFeign. O cliente está em
 
 | Nome | RM |
 |---|---|
-| Gabriel | _(preencher)_ |
+| [Nathália Mantovani de Falco] | [RM99904] |
+| [Gabriel Cruz Ferreira] | [RM559613] |
+| [João Victor Ignacio Madella] | [RM561007] |
+| [Kauã Ferreira dos Santos] | [RM560992] |
+| [Vinicius da Silva Bitú] | [RM560227] |
 
-**FIAP — 2TDSA — Global Solution 2026**
+---
+
+*FIAP — Global Solution 2026 · Disruptive Architectures IoT, IOB e Generative IA*
