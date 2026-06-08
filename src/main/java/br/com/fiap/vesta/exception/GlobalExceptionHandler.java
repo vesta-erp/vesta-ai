@@ -1,6 +1,8 @@
 package br.com.fiap.vesta.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.access.AccessDeniedException;
@@ -16,6 +18,8 @@ import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ProblemDetail handleNotFound(ResourceNotFoundException ex, HttpServletRequest req) {
@@ -67,6 +71,17 @@ public class GlobalExceptionHandler {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "Permissão insuficiente");
         pd.setTitle("Acesso negado");
         pd.setInstance(URI.create(req.getRequestURI()));
+        return pd;
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ProblemDetail handleUnexpected(Exception ex, HttpServletRequest req) {
+        log.error("[Vesta] Erro inesperado em {}: {}", req.getRequestURI(), ex.getMessage(), ex);
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR,
+            "Erro interno. Tente novamente em instantes.");
+        pd.setTitle("Erro interno");
+        pd.setInstance(URI.create(req.getRequestURI()));
+        pd.setProperty("timestamp", Instant.now());
         return pd;
     }
 }
