@@ -312,11 +312,11 @@ Link do Vídeo:
 
 | Nome | RM |
 |---|---|
-| [Nathália Mantovani de Falco] | [RM99904] |
-| [Gabriel Cruz Ferreira] | [RM559613] |
-| [João Victor Ignacio Madella] | [RM561007] |
-| [Kauã Ferreira dos Santos] | [RM560992] |
-| [Vinicius da Silva Bitú] | [RM560227] |
+| Nathália Mantovani de Falco | RM99904 |
+| Gabriel Cruz Ferreira | RM559613 |
+| João Victor Ignacio Madella | RM561007 |
+| Kauã Ferreira dos Santos | RM560992 |
+| Vinicius da Silva Bitú | RM560227 |
 
 ---
 
