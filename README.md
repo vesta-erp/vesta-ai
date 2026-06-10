@@ -187,15 +187,16 @@ push → main
         └── Deploy → Azure App Service (via OIDC)
 ```
 
-### URL pública
+### Domínio Padrão Vesta AI
 
 ```
 https://vesta-api-fdc2cgcbhwczd4eq.canadacentral-01.azurewebsites.net
+
 ```
 
 ---
 
-## Endpoints da API
+ ## Endpoints da API
 
 ### Autenticação
 
@@ -231,12 +232,12 @@ Exemplos de perguntas:
 - `"Por que o Abrigo Norte foi marcado como crítico?"`
 - `"Quais solicitações estão atrasadas?"`
 
-### Demais endpoints
+### Endpoint API
 
 Acesse o Swagger para a documentação completa:
 
 ```
-https://https://vesta-api-fdc2cgcbhwczd4eq.canadacentral-01.azurewebsites.net/swagger-ui/index.html#/
+https://vesta-api-java-gwf7drgza3hjgfc6.brazilsouth-01.azurewebsites.net/swagger-ui/index.html#/
 ```
 
 ---
@@ -304,7 +305,7 @@ spring:
 
 ## Vídeo de execução
 Link do Vídeo: 
-*link*
+[*link*](https://drive.google.com/file/d/1VVUvtg7pu_KD8QhJHA8Lk0VddsO6jIUQ/view?usp=sharing)
 
 ---
 
